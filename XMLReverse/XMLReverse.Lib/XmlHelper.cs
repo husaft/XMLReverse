@@ -83,7 +83,7 @@ namespace XMLReverse.Lib
             Console.WriteLine(args.Message);
         }
 
-        private static string ToXmlPath(string path) => $"{path}.xsd";
+        internal static string ToXmlPath(string path) => $"{path}.xsd";
 
         public static void SaveToFile(string path, XmlSchema schema)
         {

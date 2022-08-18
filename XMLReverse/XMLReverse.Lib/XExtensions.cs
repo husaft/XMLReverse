@@ -97,5 +97,28 @@ namespace XMLReverse.Lib
             document.Validate((_, e) => bld.Add(e.Message));
             return bld;
         }
+
+        public static void Write(this XmlSchema schema, string file, out IList<string> list)
+        {
+            using var stream = File.Create(XmlHelper.ToXmlPath(file));
+            list = new List<string>();
+            var lists = new[] { list };
+
+            var set = new XmlSchemaSet();
+            set.ValidationEventHandler += (_, e) => lists[0].Add(e.Message);
+            set.Add(schema);
+            set.Compile();
+
+            XmlSchema mySchema = null;
+            foreach (XmlSchema item in set.Schemas())
+                mySchema = item;
+
+            var table = new NameTable();
+            var manager = new XmlNamespaceManager(table);
+            manager.AddNamespace("xs", XsSchema);
+            mySchema!.Write(stream, manager);
+        }
+
+        private const string XsSchema = "http://www.w3.org/2001/XMLSchema";
     }
 }
