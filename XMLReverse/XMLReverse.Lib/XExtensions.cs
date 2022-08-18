@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
 
@@ -40,6 +41,37 @@ namespace XMLReverse.Lib
                 i++;
             }
             throw new InvalidOperationException("Element has been removed from its parent");
+        }
+
+        public static IEnumerable<XAttribute> GetAttributes(this XElement element)
+        {
+            var attrs = element.Attributes();
+            var text = GetText(element);
+            if (!string.IsNullOrWhiteSpace(text))
+                attrs = attrs.Concat(new[] { new XAttribute(XmlHelper.TxtId, text) });
+            var children = FilterSimpleNodes(element.Nodes())
+                .Select(t =>
+                {
+                    var local = t.node.Name.LocalName;
+                    var np = XName.Get(local, XmlHelper.ChildId);
+                    return new XAttribute(np, t.txt);
+                })
+                .ToArray();
+            if (children.Any())
+                attrs = attrs.Concat(children);
+            return attrs;
+        }
+        
+        public static IEnumerable<(XElement node, string txt)> FilterSimpleNodes(IEnumerable<XNode> nodes)
+            => nodes.OfType<XElement>()
+                .Where(t => !t.HasAttributes)
+                .Select(t => (node: t, txt: GetText(t)))
+                .Where(t => !string.IsNullOrWhiteSpace(t.txt));
+        
+        private static string GetText(XContainer e)
+        {
+            var texts = e.Nodes().OfType<XText>().Select(t => t.Value);
+            return string.Join(" ", texts).Trim();
         }
     }
 }

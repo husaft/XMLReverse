@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 using XMLReverse.Lib;
 
 namespace XMLReverse
@@ -16,7 +18,7 @@ namespace XMLReverse
             const SearchOption o = SearchOption.AllDirectories;
             var files = Directory.GetFiles(root, "*.xml", o);
 
-            var paths = new Dictionary<string, string>();
+            var paths = new SortedDictionary<string, IDictionary<string, string>>();
 
             foreach (var file in files)
             {
@@ -29,7 +31,22 @@ namespace XMLReverse
                     var path = element.GetAbsoluteXPath();
                     Console.WriteLine($"    - {path}");
 
-                    paths[path] = "?";
+                    if (XExtensions.FilterSimpleNodes(new[] { element }).Any())
+                        continue;
+
+                    var onePath = Regex.Replace(path, @"\[\d+\]", string.Empty);
+                    var attrs = element.GetAttributes();
+
+                    foreach (var xAttr in attrs)
+                    {
+                        var aName = xAttr.Name.ToString().Trim();
+                        var aVal = xAttr.Value.Trim();
+                        if (string.IsNullOrWhiteSpace(aName) || string.IsNullOrWhiteSpace(aVal))
+                            continue;
+                        if (!paths.TryGetValue(onePath, out var exist))
+                            paths[onePath] = exist = new SortedDictionary<string, string>();
+                        exist[aName] = aVal;
+                    }
                 }
             }
 

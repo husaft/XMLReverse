@@ -11,5 +11,8 @@ namespace XMLReverse.Lib
             var doc = XDocument.Load(stream);
             return doc;
         }
+
+        public const string TxtId = "_text_";
+        public const string ChildId = "_child_";
     }
 }
