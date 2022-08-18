@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text.RegularExpressions;
+using System.Xml.Linq;
+using System.Xml.Schema;
 using XMLReverse.Lib;
+using static XMLReverse.Lib.JsonHelper;
 
 namespace XMLReverse
 {
     internal static class Program
     {
-        private static void Main(string[] args)
+        private static void Main()
         {
             var app = Env.GetAppFolder();
             var root = Env.Combine(app, "..", "..", "TestData");
@@ -18,39 +19,13 @@ namespace XMLReverse
             const SearchOption o = SearchOption.AllDirectories;
             var files = Directory.GetFiles(root, "*.xml", o);
 
-            var paths = new SortedDictionary<string, IDictionary<string, string>>();
-
-            foreach (var file in files)
+            var paths = ReadFromFile<SortedDictionary<string, SortedDictionary<string, string>>>("paths");
+            if (paths.Count == 0)
             {
-                var shortName = file.Replace(root, string.Empty)[1..];
-                Console.WriteLine($" * {shortName}");
-
-                var doc = XmlHelper.Load(file);
-                foreach (var element in doc.Descendants())
-                {
-                    var path = element.GetAbsoluteXPath();
-                    Console.WriteLine($"    - {path}");
-
-                    if (XExtensions.FilterSimpleNodes(new[] { element }).Any())
-                        continue;
-
-                    var onePath = Regex.Replace(path, @"\[\d+\]", string.Empty);
-                    var attrs = element.GetAttributes();
-
-                    foreach (var xAttr in attrs)
-                    {
-                        var aName = xAttr.Name.ToString().Trim();
-                        var aVal = xAttr.Value.Trim();
-                        if (string.IsNullOrWhiteSpace(aName) || string.IsNullOrWhiteSpace(aVal))
-                            continue;
-                        if (!paths.TryGetValue(onePath, out var exist))
-                            paths[onePath] = exist = new SortedDictionary<string, string>();
-                        exist[aName] = aVal;
-                    }
-                }
+                XmlHelper.ExtractXPaths(files, root, paths);
+                WriteToFile(nameof(paths), paths);
             }
 
-            JsonHelper.WriteToFile(nameof(paths), paths);
 
             Console.WriteLine("Done.");
         }

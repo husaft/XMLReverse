@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Xml;
 using System.Xml.Linq;
+using System.Xml.Schema;
 
 namespace XMLReverse.Lib
 {
@@ -61,17 +64,38 @@ namespace XMLReverse.Lib
                 attrs = attrs.Concat(children);
             return attrs;
         }
-        
+
         public static IEnumerable<(XElement node, string txt)> FilterSimpleNodes(IEnumerable<XNode> nodes)
             => nodes.OfType<XElement>()
                 .Where(t => !t.HasAttributes)
                 .Select(t => (node: t, txt: GetText(t)))
                 .Where(t => !string.IsNullOrWhiteSpace(t.txt));
-        
+
         private static string GetText(XContainer e)
         {
             var texts = e.Nodes().OfType<XText>().Select(t => t.Value);
             return string.Join(" ", texts).Trim();
+        }
+
+        public static IList<string> Verify(this XDocument doc, XmlSchema schema)
+        {
+            var schemas = new XmlSchemaSet();
+            schemas.Add(schema);
+            var bld = new List<string>();
+            doc.Validate(schemas, (_, e) => bld.Add(e.Message));
+            return bld;
+        }
+
+        public static IList<string> Verify(this Stream stream, XmlSchema schema)
+        {
+            var settings = new XmlReaderSettings { ValidationType = ValidationType.Schema };
+            settings.Schemas.Add(schema);
+            var document = new XmlDocument();
+            using var reader = XmlReader.Create(stream, settings);
+            document.Load(reader);
+            var bld = new List<string>();
+            document.Validate((_, e) => bld.Add(e.Message));
+            return bld;
         }
     }
 }

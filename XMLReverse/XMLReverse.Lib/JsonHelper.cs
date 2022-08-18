@@ -6,14 +6,29 @@ namespace XMLReverse.Lib
 {
     public static class JsonHelper
     {
+        private static readonly Encoding Enc = Encoding.UTF8;
+
+        private static readonly JsonSerializerSettings Cfg = new()
+        {
+            Formatting = Formatting.Indented
+        };
+
         public static void WriteToFile(string path, object obj)
         {
-            var cfg = new JsonSerializerSettings
-            {
-                Formatting = Formatting.Indented
-            };
-            var json = JsonConvert.SerializeObject(obj, cfg);
-            File.WriteAllText($"{path}.json", json, Encoding.UTF8);
+            var file = ToJsonPath(path);
+            var json = JsonConvert.SerializeObject(obj, Cfg);
+            File.WriteAllText(file, json, Enc);
         }
+
+        public static T ReadFromFile<T>(string path) where T : new()
+        {
+            var file = ToJsonPath(path);
+            if (!File.Exists(file))
+                return new T();
+            var json = File.ReadAllText(file, Enc);
+            return JsonConvert.DeserializeObject<T>(json, Cfg);
+        }
+
+        private static string ToJsonPath(string path) => $"{path}.json";
     }
 }
