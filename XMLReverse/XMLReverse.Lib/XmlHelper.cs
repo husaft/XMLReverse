@@ -23,10 +23,14 @@ namespace XMLReverse.Lib
 
         public const string TxtId = "_text_";
         public const string ChildId = "_child_";
+        private const string StartId = "_";
 
         public static void ExtractXPaths(string[] files, string root,
-            IDictionary<string, SortedDictionary<string, string>> map)
+            IDictionary<string, SortedDictionary<string, string>> map,
+            IDictionary<string, PathStat> stats)
         {
+            var counts = new SortedDictionary<string, long[]>();
+            var attrCounts = new SortedDictionary<(string, string), long[]>();
             foreach (var file in files)
             {
                 var shortName = file.Replace(root, string.Empty)[1..];
@@ -38,10 +42,14 @@ namespace XMLReverse.Lib
                     var path = element.GetAbsoluteXPath();
                     Console.WriteLine($"    - {path}");
 
+                    if (!counts.TryGetValue(path, out var counter))
+                        counts[path] = counter = new[] { 0L };
+                    counter[0]++;
+
                     if (XExtensions.FilterSimpleNodes(new[] { element }).Any())
                         continue;
 
-                    var onePath = Regex.Replace(path, @"\[\d+\]", string.Empty);
+                    var onePath = Simplify(path);
                     var attrs = element.GetAttributes();
 
                     foreach (var xAttr in attrs)
@@ -54,10 +62,49 @@ namespace XMLReverse.Lib
                         if (!map.TryGetValue(onePath, out var exist))
                             map[onePath] = exist = new SortedDictionary<string, string>();
                         exist[aName] = aVal;
+
+                        var acKey = (onePath, aName);
+                        if (!attrCounts.TryGetValue(acKey, out var attrCounter))
+                            attrCounts[acKey] = attrCounter = new[] { 0L };
+                        attrCounter[0]++;
                     }
                 }
             }
+
+            var maxCount = counts.FirstOrDefault().Value[0];
+            stats[StartId] = new PathStat { NodeFreq = { [0] = maxCount } };
+            var grp = counts.GroupBy(c => Simplify(c.Key));
+            foreach (var pair in grp)
+            {
+                var subMap = new PathStat();
+                foreach (var tuple in pair)
+                {
+                    var tKey = tuple.Key;
+                    var tVal = tuple.Value.Single();
+                    var tNum = "1";
+                    var fromIdx = tKey.LastIndexOf('[');
+                    if (fromIdx != -1)
+                    {
+                        fromIdx++;
+                        var untilIdx = tKey.IndexOf(']', fromIdx);
+                        tNum = tKey.Substring(fromIdx, untilIdx - fromIdx);
+                    }
+                    var numIdx = int.Parse(tNum);
+                    subMap.NodeFreq.TryGetValue(numIdx, out var sum);
+                    subMap.NodeFreq[numIdx] = sum + tVal;
+                }
+                stats[pair.Key] = subMap;
+            }
+            foreach (var pair in attrCounts)
+            {
+                var pKey = pair.Key;
+                var pCurrent = stats[pKey.Item1];
+                pCurrent.AttrFreq[pair.Key.Item2] = pair.Value.Single();
+            }
         }
+
+        private static string Simplify(string path)
+            => Regex.Replace(path, @"\[\d+\]", string.Empty);
 
         public static XmlSchema LoadSchema(string file)
         {
