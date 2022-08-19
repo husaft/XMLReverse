@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Xml;
-using System.Xml.Linq;
 using System.Xml.Schema;
 using XMLReverse.Lib;
 using static XMLReverse.Lib.JsonHelper;
@@ -21,12 +20,17 @@ namespace XMLReverse
             var files = Directory.GetFiles(root, "*.xml", o);
 
             var paths = ReadFromFile<SortedDictionary<string, SortedDictionary<string, string>>>("paths");
+            var stats = ReadFromFile<SortedDictionary<string, PathStat>>("stats");
             if (paths.Count == 0)
             {
-                XmlHelper.ExtractXPaths(files, root, paths);
+                stats.Clear();
+                XmlHelper.ExtractXPaths(files, root, paths, stats);
                 WriteToFile(nameof(paths), paths);
+                WriteToFile(nameof(stats), stats);
             }
 
+            const string exampleFile = "example.xml";
+            SchemaMaster.CollectAsXml(exampleFile, paths);
 
             Console.WriteLine("Done.");
         }
