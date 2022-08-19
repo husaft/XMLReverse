@@ -111,7 +111,7 @@ namespace XMLReverse.Lib
             if (list.Count != 0 && validate)
                 throw new InvalidOperationException(string.Join(Environment.NewLine, list));
 
-            XmlSchema mySchema = null;
+            var mySchema = schema;
             foreach (XmlSchema item in set.Schemas())
                 mySchema = item;
 
