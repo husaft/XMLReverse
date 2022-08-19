@@ -75,6 +75,7 @@ namespace XMLReverse.Lib
         public static void GenerateSchema(string file,
             IDictionary<string, SortedDictionary<string, string>> paths, IDictionary<string, PathStat> stats)
         {
+            var fileCount = stats.First().Value.NodeFreq.Single().Value;
             var schema = new XmlSchema
             {
                 AttributeFormDefault = XmlSchemaForm.Unqualified,
@@ -89,6 +90,7 @@ namespace XMLReverse.Lib
 
                 var metaInfo = stats[currentPath];
                 var maxAttrCount = metaInfo.AttrFreq.Max(m => m.Value);
+                var maxNodeCount = metaInfo.NodeFreq.Max(m => m.Value);
 
                 var meta = tuple.Value;
                 var complexName = currentName + TypeSuffix;
@@ -128,6 +130,11 @@ namespace XMLReverse.Lib
                             SchemaTypeName = guessType.GetBuiltIn(),
                             Name = pk.Split('}', 2).Last()
                         };
+                        var (min, max) = GetMinMax(metaInfo, fileCount);
+                        if (min != null)
+                            xse.MinOccursString = min == -1 ? Unbounded : min.ToString();
+                        if (max != null)
+                            xse.MaxOccursString = max == -1 ? Unbounded : max.ToString();
                         xso = xse;
                     }
                     else
@@ -162,6 +169,34 @@ namespace XMLReverse.Lib
                 schema.Items.Add(complexType);
             }
             schema.Write(file);
+        }
+
+        private const string Unbounded = "unbounded";
+
+        private static (int? min, int? max) GetMinMax(PathStat meta, long maxCount)
+        {
+            int? minOcc = null;
+            int? maxOcc = null;
+            switch (meta.NodeFreq.Count)
+            {
+                case 1 when meta.NodeFreq.Single().Value == maxCount:
+                    minOcc = 1;
+                    maxOcc = 1;
+                    break;
+                case 1:
+                    minOcc = 0;
+                    maxOcc = 1;
+                    break;
+                case > 1 when meta.NodeFreq.First().Value == maxCount:
+                    minOcc = 1;
+                    maxOcc = -1;
+                    break;
+                case > 1:
+                    minOcc = 0;
+                    maxOcc = -1;
+                    break;
+            }
+            return (minOcc, maxOcc);
         }
     }
 }
