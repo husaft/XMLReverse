@@ -131,6 +131,8 @@ namespace XMLReverse.Lib
             foreach (var item in schema.Items)
                 if (item is XmlSchemaElement xse && name.Equals(xse.Name))
                     return item;
+                else if (item is XmlSchemaType xst && name.Equals(xst.Name))
+                    return item;
             return null;
         }
     }
