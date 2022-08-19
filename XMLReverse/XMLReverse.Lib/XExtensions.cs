@@ -98,7 +98,7 @@ namespace XMLReverse.Lib
             return bld;
         }
 
-        public static void Write(this XmlSchema schema, string file)
+        public static void Write(this XmlSchema schema, string file, bool validate = true)
         {
             var list = new List<string>();
             var lists = new[] { list };
@@ -108,7 +108,7 @@ namespace XMLReverse.Lib
             set.Add(schema);
             set.Compile();
 
-            if (list.Count != 0)
+            if (list.Count != 0 && validate)
                 throw new InvalidOperationException(string.Join(Environment.NewLine, list));
 
             XmlSchema mySchema = null;
@@ -119,14 +119,19 @@ namespace XMLReverse.Lib
             var manager = new XmlNamespaceManager(table);
             manager.AddNamespace("xs", XsSchema);
 
-            using var stream = File.Create(XmlHelper.ToXmlPath(file));
-            using var writer = XmlWriter.Create(stream, new XmlWriterSettings
-            {
-                OmitXmlDeclaration = true, Indent = true
-            });
+            using var stream = File.Create(file);
+            using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Indent = true });
             mySchema!.Write(writer, manager);
         }
 
         private const string XsSchema = "http://www.w3.org/2001/XMLSchema";
+
+        public static XmlSchemaObject FindByName(this XmlSchema schema, string name)
+        {
+            foreach (var item in schema.Items)
+                if (item is XmlSchemaElement xse && name.Equals(xse.Name))
+                    return item;
+            return null;
+        }
     }
 }

@@ -157,5 +157,44 @@ namespace XMLReverse.Lib
             settings.ValidationEventHandler += OnValidation;
             return XmlReader.Create(file, settings);
         }
+
+        public static XmlQualifiedName GetBuiltIn(this XmlTypeCode code)
+        {
+            var type = XmlSchemaType.GetBuiltInSimpleType(code);
+            return type.QualifiedName;
+        }
+
+        public static XmlQualifiedName GetBuiltIn(this XmlTypeCode? code) => code?.GetBuiltIn();
+
+        public static XmlTypeCode? EstimateType(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return null;
+            if (Convertor.IsBoolean(text, out _))
+                return XmlTypeCode.Boolean;
+            if (byte.TryParse(text, out _))
+                return XmlTypeCode.UnsignedByte;
+            if (ushort.TryParse(text, out _))
+                return XmlTypeCode.UnsignedShort;
+            if (int.TryParse(text, out _))
+                return XmlTypeCode.Int;
+            if (long.TryParse(text, out _))
+                return XmlTypeCode.Long;
+            if (float.TryParse(text, out _))
+                return XmlTypeCode.Float;
+            if (double.TryParse(text, out _))
+                return XmlTypeCode.Double;
+            if (decimal.TryParse(text, out _))
+                return XmlTypeCode.Decimal;
+            if (DateTime.TryParse(text, out _))
+                return XmlTypeCode.DateTime;
+            if (TimeSpan.TryParse(text, out _))
+                return XmlTypeCode.Duration;
+            if (Convertor.IsUrl(text))
+                return XmlTypeCode.AnyUri;
+            if (Convertor.IsBase64(text))
+                return XmlTypeCode.Base64Binary;
+            return XmlTypeCode.String;
+        }
     }
 }

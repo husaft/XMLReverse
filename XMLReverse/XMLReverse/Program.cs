@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Xml;
 using System.Xml.Schema;
 using XMLReverse.Lib;
@@ -31,6 +32,9 @@ namespace XMLReverse
 
             const string exampleFile = "example.xml";
             SchemaMaster.CollectAsXml(exampleFile, paths);
+
+            const string schemaFile = "example.xsd";
+            GenerateSchema(schemaFile, paths, stats);
 
             Console.WriteLine("Done.");
         }
