@@ -23,6 +23,7 @@ namespace XMLReverse.Lib
 
         public const string TxtId = "_text_";
         public const string ChildId = "_child_";
+        public const string ContainsId = "_node_";
         private const string StartId = "_";
 
         public static void ExtractXPaths(string[] files, string root,
@@ -164,37 +165,37 @@ namespace XMLReverse.Lib
             return type.QualifiedName;
         }
 
-        public static XmlQualifiedName GetBuiltIn(this XmlTypeCode? code) => code?.GetBuiltIn();
-
-        public static XmlTypeCode? EstimateType(string text)
+        public static XmlQualifiedName EstimateType(string text)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return null;
-            if (Convertor.IsBoolean(text, out _))
-                return XmlTypeCode.Boolean;
+            if (Convertor.IsBoolean(text, out var isYesNo))
+                return isYesNo
+                    ? new XmlQualifiedName("enBool")
+                    : XmlTypeCode.Boolean.GetBuiltIn();
             if (byte.TryParse(text, out _))
-                return XmlTypeCode.UnsignedByte;
+                return XmlTypeCode.UnsignedByte.GetBuiltIn();
             if (ushort.TryParse(text, out _))
-                return XmlTypeCode.UnsignedShort;
+                return XmlTypeCode.UnsignedShort.GetBuiltIn();
             if (int.TryParse(text, out _))
-                return XmlTypeCode.Int;
+                return XmlTypeCode.Int.GetBuiltIn();
             if (long.TryParse(text, out _))
-                return XmlTypeCode.Long;
+                return XmlTypeCode.Long.GetBuiltIn();
             if (float.TryParse(text, out _))
-                return XmlTypeCode.Float;
+                return XmlTypeCode.Float.GetBuiltIn();
             if (double.TryParse(text, out _))
-                return XmlTypeCode.Double;
+                return XmlTypeCode.Double.GetBuiltIn();
             if (decimal.TryParse(text, out _))
-                return XmlTypeCode.Decimal;
+                return XmlTypeCode.Decimal.GetBuiltIn();
             if (DateTime.TryParse(text, out _))
-                return XmlTypeCode.DateTime;
+                return XmlTypeCode.String.GetBuiltIn(); // TODO XmlTypeCode.DateTime
             if (TimeSpan.TryParse(text, out _))
-                return XmlTypeCode.Duration;
+                return XmlTypeCode.Duration.GetBuiltIn();
             if (Convertor.IsUrl(text))
-                return XmlTypeCode.AnyUri;
+                return XmlTypeCode.AnyUri.GetBuiltIn();
             if (Convertor.IsBase64(text))
-                return XmlTypeCode.Base64Binary;
-            return XmlTypeCode.String;
+                return XmlTypeCode.Base64Binary.GetBuiltIn();
+            return XmlTypeCode.String.GetBuiltIn();
         }
     }
 }
