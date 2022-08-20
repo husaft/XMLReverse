@@ -33,7 +33,15 @@ namespace XMLReverse
             const string schemaFile = "example.xsd";
             SchemaMaster.GenerateSchema(schemaFile, paths, stats);
 
+            if (!XmlHelper.Validate(exampleFile, schemaFile, out var errors))
+            {
+                Console.Error.WriteLine(string.Join(Environment.NewLine, errors));
+                Environment.ExitCode = -errors.Count;
+                return;
+            }
+
             Console.WriteLine("Done.");
+            Environment.ExitCode = 0;
         }
     }
 }

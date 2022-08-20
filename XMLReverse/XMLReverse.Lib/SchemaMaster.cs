@@ -87,7 +87,7 @@ namespace XMLReverse.Lib
                 ElementFormDefault = XmlSchemaForm.Qualified
             };
 
-            var skipPaths = new List<string>();
+            var checkSeq = new List<XmlSchemaGroupBase>();
             var allPaths = paths.Keys.Concat(stats.Keys.Skip(1))
                 .OrderBy(k => k.Count(l => l == '/'))
                 .ThenBy(k => k)
@@ -95,9 +95,6 @@ namespace XMLReverse.Lib
 
             foreach (var currentPath in allPaths)
             {
-                if (skipPaths.Contains(currentPath))
-                    continue;
-
                 var currentParts = currentPath.Split('/').Skip(1).ToArray();
                 var currentName = currentParts.Last();
 
@@ -106,8 +103,10 @@ namespace XMLReverse.Lib
 
                 if (!paths.TryGetValue(currentPath, out var meta))
                     meta = new SortedDictionary<string, string>();
-                Expand(currentPath, meta, allPaths, skipPaths);
-                var complexName = currentName + TypeSuffix;
+                Expand(currentPath, meta, allPaths);
+
+                var bigPrefix = XmlHelper.GetPrefix(currentPath, 1);
+                var complexName = bigPrefix + currentName + TypeSuffix;
 
                 var suffix = 1;
                 while (schema.FindByName(complexName) != null)
@@ -140,10 +139,11 @@ namespace XMLReverse.Lib
                     if (pk.Contains(XmlHelper.ContainsId))
                     {
                         var xct = pk.Split('}', 2).Last();
+                        var ePrefix = XmlHelper.GetPrefix(currentPath, 0);
                         var xse = new XmlSchemaElement
                         {
                             Name = xct,
-                            SchemaTypeName = new XmlQualifiedName(xct + TypeSuffix)
+                            SchemaTypeName = new XmlQualifiedName(ePrefix + xct + TypeSuffix)
                         };
                         var childPath = $"{currentPath}/{xse.Name}";
                         var childMeta = stats[childPath];
@@ -154,7 +154,7 @@ namespace XMLReverse.Lib
                             childMeta.AttrFreq.Count == 0)
                         {
                             var tmpCheck = new Dictionary<string, string>();
-                            Expand(childPath, tmpCheck, allPaths, skipPaths);
+                            Expand(childPath, tmpCheck, allPaths);
                             if (tmpCheck.Count == 0)
                                 xse.MinOccurs = 0;
                         }
@@ -169,7 +169,6 @@ namespace XMLReverse.Lib
                             SchemaTypeName = guessType
                         };
                         var childPath = $"{currentPath}/{xse.Name}";
-                        skipPaths.Add(childPath);
                         var childMeta = stats[childPath];
                         SetMinMax(xse, childMeta, maxNodeCount);
                         xso = xse;
@@ -206,20 +205,68 @@ namespace XMLReverse.Lib
                 if (schema.Items.Count == 0)
                     schema.Items.Add(CreateRootItem(currentName, complexName));
                 schema.Items.Add(complexType);
+
+                if (complexType.Particle is XmlSchemaGroupBase xbb &&
+                    xbb.Items.OfType<XmlSchemaElement>().Select(i => i.Name)
+                        .Distinct().Count() != xbb.Items.Count)
+                    checkSeq.Add(xbb);
             }
+
             AddHelperTypes(schema);
+            CheckAndFixSequences(checkSeq, schema);
             schema.Write(file);
         }
 
+        private static void CheckAndFixSequences(IEnumerable<XmlSchemaGroupBase> groups, XmlSchema schema)
+        {
+            foreach (var group in groups)
+            {
+                foreach (var pair in group.Items
+                             .OfType<XmlSchemaElement>().GroupBy(e => e.Name).ToArray())
+                {
+                    var items = pair.ToDictionary(GetNameSpace);
+                    if (items.Count < 2)
+                        continue;
+                    var complex = items[string.Empty];
+                    var complexName = complex.SchemaTypeName.Name;
+                    var complexType = (XmlSchemaComplexType)schema.FindByName(complexName);
+                    if (complexType.Attributes.Count == 0 &&
+                        complexType.Particle == null &&
+                        complexType.ContentModel == null)
+                    {
+                        schema.Items.Remove(complexType);
+                        group.Items.Remove(complex);
+                        continue;
+                    }
+                    var basic = items.FirstOrDefault(i =>
+                        i.Value != complex).Value;
+                    var oldIndex = group.Items.IndexOf(basic);
+                    var newIndex = group.Items.IndexOf(complex);
+                    group.Items[newIndex] = basic;
+                    group.Items[oldIndex] = complex;
+                    group.Items.Remove(basic);
+                }
+            }
+        }
+
+        private static string GetNameSpace(XmlSchemaElement element)
+            => EnBool.Equals(element.SchemaTypeName.Name)
+                ? "_special_"
+                : element.SchemaTypeName.Namespace;
+
+        private const string EnBool = "enBool";
+
         private static void AddHelperTypes(XmlSchema schema)
         {
-            var boolXml = new XmlSchemaSimpleType { Name = "enBool" };
+            var boolXml = new XmlSchemaSimpleType { Name = EnBool };
             var xst = new XmlSchemaSimpleTypeRestriction
             {
                 BaseTypeName = XmlTypeCode.Token.GetBuiltIn()
             };
             xst.Facets.Add(new XmlSchemaEnumerationFacet { Value = "yes" });
             xst.Facets.Add(new XmlSchemaEnumerationFacet { Value = "no" });
+            xst.Facets.Add(new XmlSchemaEnumerationFacet { Value = "YES" });
+            xst.Facets.Add(new XmlSchemaEnumerationFacet { Value = "NO" });
             boolXml.Content = xst;
             schema.Items.Add(boolXml);
         }
@@ -271,21 +318,18 @@ namespace XMLReverse.Lib
             return (minOcc, maxOcc);
         }
 
-        private static void Expand(string current, IDictionary<string, string> map,
-            IEnumerable<string> allPaths, IEnumerable<string> skipPaths)
+        private static void Expand(string current,
+            IDictionary<string, string> map, IEnumerable<string> allPaths)
         {
             const char node = '/';
             var currentParts = current.Split(node);
-            var paths = allPaths.Except(skipPaths)
+            var paths = allPaths
                 .Where(p => p.StartsWith(current + node))
                 .Select(p => p.Split(node))
                 .Where(p => p.Length == currentParts.Length + 1);
             foreach (var path in paths)
             {
                 var childName = path.Last();
-                var childId = $"{{{XmlHelper.ChildId}}}{childName}";
-                if (map.ContainsKey(childId))
-                    continue;
                 var newId = $"{{{XmlHelper.ContainsId}}}{childName}";
                 map.Add(newId, "_");
             }

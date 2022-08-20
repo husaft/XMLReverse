@@ -72,7 +72,7 @@ namespace XMLReverse.Lib
                 }
             }
 
-            var maxCount = counts.FirstOrDefault().Value[0];
+            var maxCount = counts.FirstOrDefault().Value?[0] ?? 0;
             stats[StartId] = new PathStat { NodeFreq = { [0] = maxCount } };
             var grp = counts.GroupBy(c => Simplify(c.Key));
             foreach (var pair in grp)
@@ -196,6 +196,52 @@ namespace XMLReverse.Lib
             if (Convertor.IsBase64(text))
                 return XmlTypeCode.Base64Binary.GetBuiltIn();
             return XmlTypeCode.String.GetBuiltIn();
+        }
+
+        public static string GetPrefix(string path, int del)
+        {
+            var array = path.Split('/');
+            var parts = array.Take(array.Length - del).Skip(2);
+            var tmp = parts.Select(p => p[..1] + p[^1..]);
+            var text = string.Join(string.Empty, tmp);
+            return text.ToLowerInvariant();
+        }
+
+        public static bool Validate(string xml, string xsd, out IList<string> errors)
+        {
+            var schemas = new XmlSchemaSet();
+            schemas.Add(string.Empty, xsd);
+            var doc = XDocument.Load(xml);
+
+            errors = new List<string>();
+            try
+            {
+                var tmp = errors;
+                doc.Validate(schemas, (src, evt) =>
+                {
+                    var sender = GetXElement((XObject)src);
+                    var xPath = sender?.GetAbsoluteXPath();
+                    var text = $"[{evt.Severity}] {xPath} | {evt.Message}";
+                    tmp.Add(text);
+                });
+            }
+            catch (XmlSchemaValidationException xsv)
+            {
+                const XmlSeverityType severity = XmlSeverityType.Error;
+                var src = Path.GetFileName(new Uri(xsv.SourceUri ?? string.Empty).LocalPath);
+                var pos = $"({xsv.LineNumber}:{xsv.LinePosition})";
+                var line = $"[{severity}] {src} {pos} | {xsv.Message}";
+                errors.Add(line);
+            }
+
+            return errors.Count == 0;
+        }
+
+        private static XElement GetXElement(XObject sender)
+        {
+            while (sender != null && sender is not XElement)
+                sender = sender.Parent;
+            return (XElement)sender;
         }
     }
 }
