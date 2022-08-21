@@ -10,8 +10,12 @@ namespace XMLReverse.Lib
     public static class GraphTool
     {
         public static void GenerateGraph(string fileName,
-            IDictionary<string, SortedDictionary<string, string>> paths)
+            IDictionary<string, SortedDictionary<string, string>> paths, 
+            bool overwrite = false)
         {
+            if (!overwrite && File.Exists(fileName))
+                return;
+
             using var file = File.CreateText(fileName);
             file.WriteLine("graph {");
 
