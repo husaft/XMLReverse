@@ -33,6 +33,9 @@ namespace XMLReverse
             const string schemaFile = "example.xsd";
             SchemaMaster.GenerateSchema(schemaFile, paths, stats);
 
+            const string tableFile = "example.csv";
+            CsvTool.GenerateTable(tableFile, paths, stats);
+
             if (!XmlHelper.Validate(exampleFile, schemaFile, out var errors))
             {
                 Console.Error.WriteLine(string.Join(Environment.NewLine, errors));

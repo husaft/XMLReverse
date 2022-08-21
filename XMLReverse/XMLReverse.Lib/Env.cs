@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 
 namespace XMLReverse.Lib
@@ -20,6 +21,11 @@ namespace XMLReverse.Lib
             var dir = Path.Combine(root, sub);
             dir = Path.GetFullPath(dir);
             return dir;
+        }
+
+        public static void Execute(string file)
+        {
+            Process.Start(new ProcessStartInfo(file) { UseShellExecute = true });
         }
     }
 }
