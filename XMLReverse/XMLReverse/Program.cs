@@ -36,6 +36,12 @@ namespace XMLReverse
             const string tableFile = "example.csv";
             CsvTool.GenerateTable(tableFile, paths, stats);
 
+            const string graphFile = "example.dot";
+            GraphTool.GenerateGraph(graphFile, paths);
+
+            const string codeFile = "example.cs";
+            CodeTool.GenerateCSharp(codeFile, paths);
+
             if (!XmlHelper.Validate(exampleFile, schemaFile, out var errors))
             {
                 Console.Error.WriteLine(string.Join(Environment.NewLine, errors));
