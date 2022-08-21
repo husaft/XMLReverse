@@ -318,7 +318,7 @@ namespace XMLReverse.Lib
             return (minOcc, maxOcc);
         }
 
-        private static void Expand(string current,
+        internal static void Expand(string current,
             IDictionary<string, string> map, IEnumerable<string> allPaths)
         {
             const char node = '/';
