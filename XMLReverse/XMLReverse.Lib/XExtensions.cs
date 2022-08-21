@@ -77,27 +77,6 @@ namespace XMLReverse.Lib
             return string.Join(" ", texts).Trim();
         }
 
-        public static IList<string> Verify(this XDocument doc, XmlSchema schema)
-        {
-            var schemas = new XmlSchemaSet();
-            schemas.Add(schema);
-            var bld = new List<string>();
-            doc.Validate(schemas, (_, e) => bld.Add(e.Message));
-            return bld;
-        }
-
-        public static IList<string> Verify(this Stream stream, XmlSchema schema)
-        {
-            var settings = new XmlReaderSettings { ValidationType = ValidationType.Schema };
-            settings.Schemas.Add(schema);
-            var document = new XmlDocument();
-            using var reader = XmlReader.Create(stream, settings);
-            document.Load(reader);
-            var bld = new List<string>();
-            document.Validate((_, e) => bld.Add(e.Message));
-            return bld;
-        }
-
         public static void Write(this XmlSchema schema, string file, bool validate = true)
         {
             var list = new List<string>();
